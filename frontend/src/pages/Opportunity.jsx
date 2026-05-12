@@ -1,74 +1,10 @@
 ﻿import { useState, useEffect, useCallback, useRef } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import { ReactFlowProvider, ReactFlow, Background, Controls, MiniMap, addEdge, applyNodeChanges, applyEdgeChanges, Handle, Position } from "@xyflow/react"
+import { ReactFlowProvider, ReactFlow, Background, Controls, MiniMap, addEdge, applyNodeChanges, applyEdgeChanges } from "@xyflow/react"
 import { getOpportunity, createNode, updateNode, deleteNode, saveAllNodes } from "../api"
 import LogPanel, { useLog } from "../components/LogPanel"
-
-const STATUS_COLORS = {
-  '已完成': { bg: '#d1fae5', border: '#10b981', text: '#10b981' },
-  '进行中': { bg: '#fef3c7', border: '#f59e0b', text: '#f59e0b' },
-  '待办': { bg: '#dbeafe', border: '#3b82f6', text: '#3b82f6' },
-}
-
-function MindMapNode({ data, selected }) {
-  const status = data.status || '待办'
-  const colors = STATUS_COLORS[status] || STATUS_COLORS['待办']
-
-  return (
-    <div
-      className={`relative px-4 py-3 rounded-lg border-2 transition-all ${
-        selected ? 'shadow-lg ring-2 ring-offset-2' : 'shadow-sm'
-      }`}
-      style={{
-        backgroundColor: colors.bg,
-        borderColor: colors.border,
-        minWidth: '200px',
-        maxWidth: '300px',
-        width: 'fit-content',
-      }}
-    >
-      <Handle type="target" position={Position.Top} id="top-target" className="handle-target-outer" />
-      <Handle type="source" position={Position.Top} id="top-source" className="handle-source-inner" />
-      <Handle type="target" position={Position.Right} id="right-target" className="handle-target-outer" />
-      <Handle type="source" position={Position.Right} id="right-source" className="handle-source-inner" />
-      <Handle type="target" position={Position.Bottom} id="bottom-target" className="handle-target-outer" />
-      <Handle type="source" position={Position.Bottom} id="bottom-source" className="handle-source-inner" />
-      <Handle type="target" position={Position.Left} id="left-target" className="handle-target-outer" />
-      <Handle type="source" position={Position.Left} id="left-source" className="handle-source-inner" />
-
-      {data.isSmart && (
-        <span className="absolute -top-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center text-sm font-bold shadow z-10">
-          ⭐
-        </span>
-      )}
-
-      {data.sequence && (
-        <span
-          className="absolute -top-3 -left-3 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold text-white shadow z-10"
-          style={{ backgroundColor: colors.border }}
-        >
-          {data.sequence}
-        </span>
-      )}
-
-      <div className="font-medium text-gray-800 text-base mb-2 line-clamp-2 pr-6">
-        {data.label}
-      </div>
-
-      <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
-        <span className="truncate">{data.assignee || '未分配'}</span>
-        <span className="text-gray-500 text-xs">{data.deadline || '无截止日期'}</span>
-      </div>
-
-      <div
-        className="mt-1 px-3 py-1 rounded-full text-xs font-medium text-center text-white"
-        style={{ backgroundColor: colors.border }}
-      >
-        {status}
-      </div>
-    </div>
-  )
-}
+import MindMapNode from "../components/MindMapNode"
+import NodeModal from "../components/NodeModal"
 
 const nodeTypes = {
   mindmap: MindMapNode
@@ -83,6 +19,8 @@ export default function Opportunity() {
   const [selectedNodes, setSelectedNodes] = useState([])
   const [selectedEdges, setSelectedEdges] = useState([])
   const [showLogPanel, setShowLogPanel] = useState(false)
+  const [showNodeModal, setShowNodeModal] = useState(false)
+  const [editingNode, setEditingNode] = useState(null)
   const nodePositionRef = useRef({})
   const saveTimeoutRef = useRef(null)
   const edgesRef = useRef([])
@@ -117,15 +55,20 @@ export default function Opportunity() {
           opportunity_id: id,
           title: node.data.label,
           assignee: node.data.assignee || "",
-          deadline: node.data.deadline || "",
+          department: node.data.department || "",
+          description: node.data.description || "",
           status: node.data.status || "待办",
+          acceptance_criteria: node.data.acceptance_criteria || "",
+          start_date: node.data.start_date || "",
+          due_date: node.data.due_date || "",
+          risk: node.data.risk || "",
           notes: "",
           is_smart: node.data.isSmart || false,
-          smart_s: "",
-          smart_m: "",
-          smart_a: "",
-          smart_r: "",
-          smart_t: "",
+          smart_s: node.data.smart_s || "",
+          smart_m: node.data.smart_m || "",
+          smart_a: node.data.smart_a || "",
+          smart_r: node.data.smart_r || "",
+          smart_t: node.data.smart_t || "",
           parent_relations: node.data.parent_relations || [],
           sequence: node.data.sequence || 1,
           position_x: node.position.x,
@@ -159,8 +102,18 @@ export default function Opportunity() {
               label: n.title,
               status: n.status || "待办",
               assignee: n.assignee || "",
-              deadline: n.deadline || "",
+              department: n.department || "",
+              description: n.description || "",
+              acceptance_criteria: n.acceptance_criteria || "",
+              start_date: n.start_date || "",
+              due_date: n.due_date || "",
+              risk: n.risk || "",
               isSmart: n.is_smart || false,
+              smart_s: n.smart_s || "",
+              smart_m: n.smart_m || "",
+              smart_a: n.smart_a || "",
+              smart_r: n.smart_r || "",
+              smart_t: n.smart_t || "",
               sequence: n.sequence || (i + 1),
               parent_relations: parentRelations
             },
@@ -412,69 +365,58 @@ export default function Opportunity() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedNodes, selectedEdges, handleDelete])
 
-  const handleAddNode = async () => {
-    addLog('INFO', '开始创建新节点')
-    try {
-      const newNode = await createNode(id, {
-        title: "新节点",
-        status: "待办",
-        parent_ids: []
-      })
-      addLog('SUCCESS', '新节点创建成功', { nodeId: newNode.id })
-      const data = await getOpportunity(id)
-      setOpp(data)
-      const ns = []
-      const es = []
-      if (data.nodes) {
-        data.nodes.forEach((n, i) => {
-          const parentRelations = n.parent_relations || []
-          ns.push({
-            id: n.id,
-            type: "mindmap",
-            data: {
-              label: n.title,
-              status: n.status || "待办",
-              assignee: n.assignee || "",
-              deadline: n.deadline || "",
-              isSmart: n.is_smart || false,
-              sequence: n.sequence || (i + 1),
-              parent_relations: parentRelations
-            },
-            position: { x: n.position_x || 100 + (i % 3) * 250, y: n.position_y || 100 + Math.floor(i / 3) * 180 },
-          })
-          nodePositionRef.current[n.id] = { x: n.position_x || 100, y: n.position_y || 100 }
-          if (parentRelations && parentRelations.length > 0) {
-            parentRelations.forEach(relation => {
-              const srcHandle = relation.source_handle || "top"
-              const tgtHandle = relation.target_handle || "right"
-              es.push({
-                id: `${relation.parent_id}-${n.id}-${srcHandle}-${tgtHandle}`,
-                source: relation.parent_id,
-                target: n.id,
-                type: "smoothstep",
-                sourceHandle: `${srcHandle}-source`,
-                targetHandle: `${tgtHandle}-target`,
-              })
-            })
-          } else if (n.parent_ids && n.parent_ids.length > 0) {
-            n.parent_ids.forEach(parentId => {
-              es.push({
-                id: `${parentId}-${n.id}-top-right`,
-                source: parentId,
-                target: n.id,
-                type: "smoothstep",
-                sourceHandle: "top-source",
-                targetHandle: "right-target",
-              })
-            })
-          }
-        })
+  const handleAddNode = () => {
+    setEditingNode(null)
+    setShowNodeModal(true)
+  }
+
+  const handleEditNode = (nodeData) => {
+    setEditingNode(nodeData)
+    setShowNodeModal(true)
+  }
+
+  const handleSaveNode = async (nodeData, nodeId) => {
+    if (nodeId) {
+      addLog('INFO', '开始更新节点', { nodeId })
+      try {
+        setNodes(prev => prev.map(n => 
+          n.id === nodeId 
+            ? { ...n, data: { ...n.data, ...nodeData } }
+            : n
+        ))
+        addLog('SUCCESS', '节点更新成功', { nodeId })
+      } catch (err) {
+        addLog('ERROR', '节点更新失败', { nodeId, error: err.message })
       }
-      setNodes(ns)
-      setEdges(es)
-    } catch (err) {
-      addLog('ERROR', '新节点创建失败', { error: err.message })
-      console.error("Failed to add node:", err)
+    } else {
+      addLog('INFO', '开始创建新节点')
+      try {
+        const newNode = await createNode(id, {
+          title: nodeData.label,
+          status: nodeData.status,
+          assignee: nodeData.assignee,
+          acceptance_criteria: nodeData.acceptance_criteria,
+          start_date: nodeData.start_date,
+          due_date: nodeData.due_date,
+          risk: nodeData.risk,
+          parent_relations: []
+        })
+        addLog('SUCCESS', '新节点创建成功', { nodeId: newNode.id })
+        
+        const newNodeItem = {
+          id: newNode.id,
+          type: "mindmap",
+          data: {
+            ...nodeData,
+            parent_relations: []
+          },
+          position: { x: 100 + (nodes.length % 3) * 250, y: 100 + Math.floor(nodes.length / 3) * 180 },
+        }
+        setNodes(prev => [...prev, newNodeItem])
+      } catch (err) {
+        addLog('ERROR', '新节点创建失败', { error: err.message })
+        console.error("Failed to add node:", err)
+      }
     }
   }
 
@@ -561,7 +503,7 @@ export default function Opportunity() {
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             onSelectionChange={onSelectionChange}
-            nodeTypes={nodeTypes}
+            nodeTypes={{ mindmap: (props) => <MindMapNode {...props} onEdit={handleEditNode} /> }}
             className="bg-gray-50"
             fitView
             connectionMode="loose"
@@ -577,6 +519,13 @@ export default function Opportunity() {
         logs={logs}
         isOpen={showLogPanel}
         onClose={() => setShowLogPanel(false)}
+      />
+      <NodeModal
+        isOpen={showNodeModal}
+        onClose={() => setShowNodeModal(false)}
+        onSave={handleSaveNode}
+        editData={editingNode}
+        opportunityId={id}
       />
     </div>
   )

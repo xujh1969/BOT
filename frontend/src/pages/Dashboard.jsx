@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getOpportunities, createOpportunity, archiveOpportunity, unarchiveOpportunity, deleteOpportunity } from '../api'
+import { getOpportunities, createOpportunity, archiveOpportunity, unarchiveOpportunity, deleteOpportunity, updateOpportunity } from '../api'
 import { useAuthStore } from '../store/authStore'
 
 const STATUS_COLORS = {
@@ -21,6 +21,8 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newOppName, setNewOppName] = useState('')
+  const [editingId, setEditingId] = useState(null)
+  const [editingName, setEditingName] = useState('')
   const { logout } = useAuthStore()
   const navigate = useNavigate()
 
@@ -74,11 +76,38 @@ export default function Dashboard() {
   const handleDelete = async (id) => {
     if (!confirm('确定要删除这个商机吗？')) return
     try {
+      setIsLoading(true)
       await deleteOpportunity(id)
-      loadOpportunities()
     } catch (err) {
       console.error('Failed to delete opportunity:', err)
+      alert('删除失败，请稍后重试')
+    } finally {
+      loadOpportunities()
+      setIsLoading(false)
     }
+  }
+
+  const handleStartEdit = (opp) => {
+    setEditingId(opp.id)
+    setEditingName(opp.name)
+  }
+
+  const handleSaveEdit = async (id) => {
+    if (!editingName.trim()) return
+    try {
+      await updateOpportunity(id, { name: editingName.trim() })
+      loadOpportunities()
+    } catch (err) {
+      console.error('Failed to update opportunity:', err)
+    } finally {
+      setEditingId(null)
+      setEditingName('')
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingId(null)
+    setEditingName('')
   }
 
   const getStatus = (opp) => {
@@ -94,8 +123,26 @@ export default function Dashboard() {
   const getLatestNode = (opp) => {
     const nodes = opp.nodes || []
     if (nodes.length === 0) return null
-    const sorted = [...nodes].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
-    return sorted[0]
+    
+    const parentIds = new Set()
+    nodes.forEach(node => {
+      const relations = node.parent_relations || []
+      relations.forEach(rel => {
+        if (rel.parent_id) {
+          parentIds.add(rel.parent_id)
+        }
+      })
+    })
+    
+    const leafNodes = nodes.filter(node => !parentIds.has(node.id))
+    
+    if (leafNodes.length === 0) {
+      const sorted = [...nodes].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+      return sorted[0]
+    }
+    
+    const sortedLeaves = [...leafNodes].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+    return sortedLeaves[0]
   }
 
   const getAssignees = (opp) => {
@@ -233,9 +280,52 @@ export default function Dashboard() {
                 >
                   <div className="p-4">
                     <div className="flex items-start justify-between mb-2">
-                      <h3 className="text-title-md text-ink group-hover:text-primary transition-colors pr-2 flex-1">
-                        {opp.name}
-                      </h3>
+                      {editingId === opp.id ? (
+                        <div className="flex-1 flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={editingName}
+                            onChange={(e) => setEditingName(e.target.value)}
+                            className="flex-1 px-2 py-1 border border-primary rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                            autoFocus
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveEdit(opp.id)
+                              if (e.key === 'Escape') handleCancelEdit()
+                            }}
+                          />
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleSaveEdit(opp.id) }}
+                            className="p-1 text-green-600 hover:bg-green-50 rounded"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleCancelEdit() }}
+                            className="p-1 text-gray-500 hover:bg-gray-100 rounded"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex-1 flex items-center gap-2">
+                          <h3 className="text-title-md text-ink group-hover:text-primary transition-colors flex-1">
+                            {opp.name}
+                          </h3>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleStartEdit(opp) }}
+                            className="p-1 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-all"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_BADGE_COLORS[status]}`}>
                         {status}
                       </span>
