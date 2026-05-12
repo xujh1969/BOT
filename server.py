@@ -439,6 +439,8 @@ async def delete_node(id: str, request: Request):
     if not found:
         raise HTTPException(status_code=404, detail="Node not found")
 
+app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
