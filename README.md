@@ -14,6 +14,7 @@
 ## 🛠️ 技术栈
 
 ### 前端
+
 - **React 18** - UI 框架
 - **Vite** - 构建工具
 - **Tailwind CSS 3** - 样式框架
@@ -23,6 +24,7 @@
 - **Axios** - HTTP 客户端
 
 ### 后端
+
 - **FastAPI** - 高性能 API 框架
 - **Python 3.9+** - 编程语言
 - **bcrypt** - 密码加密
@@ -31,6 +33,7 @@
 ## 🚀 快速开始
 
 ### 环境要求
+
 - Python 3.9+
 - Node.js 18+
 - npm 或 yarn
@@ -38,40 +41,45 @@
 ### 安装与运行
 
 1. **克隆项目**
+
 ```bash
 git clone <repository-url>
 cd BOT
 ```
 
-2. **安装后端依赖**
+1. **安装后端依赖**
+
 ```bash
 pip install fastapi uvicorn bcrypt
 ```
 
-3. **安装前端依赖**
+1. **安装前端依赖**
+
 ```bash
 cd frontend
 npm install
 ```
 
-4. **构建前端**
+1. **构建前端**
+
 ```bash
 npm run build
 ```
 
-5. **启动服务器**
+1. **启动服务器**
+
 ```bash
 cd ..
 python server.py
 ```
 
-6. **访问应用**
+1. **访问应用**
 
 打开浏览器访问 `http://localhost:8000`
 
 ### 首次设置
 
-首次访问时，系统会引导您设置登录密码和管理员密码。
+首次访问时，系统会引导您设置登录密码和管理员密码。请先把config.json里的的password的hash值设置为空字符串
 
 ## 📁 项目结构
 
@@ -110,51 +118,58 @@ BOT/
 ## 🔌 API 接口
 
 ### 认证接口
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| POST | `/api/login` | 用户登录 |
-| POST | `/api/setup` | 首次设置 |
-| GET | `/api/check-auth` | 检查认证状态 |
-| GET | `/api/check-first-time` | 检查是否首次访问 |
+
+| 方法   | 路径                      | 描述       |
+| ---- | ----------------------- | -------- |
+| POST | `/api/login`            | 用户登录     |
+| POST | `/api/setup`            | 首次设置     |
+| GET  | `/api/check-auth`       | 检查认证状态   |
+| GET  | `/api/check-first-time` | 检查是否首次访问 |
 
 ### 商机接口
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| GET | `/api/opportunities` | 获取商机列表 |
-| GET | `/api/opportunities/{id}` | 获取商机详情 |
-| POST | `/api/opportunities` | 创建商机 |
-| PUT | `/api/opportunities/{id}` | 更新商机 |
-| DELETE | `/api/opportunities/{id}` | 删除商机 |
-| POST | `/api/opportunities/{id}/save-all` | 全量保存节点 |
+
+| 方法     | 路径                                 | 描述     |
+| ------ | ---------------------------------- | ------ |
+| GET    | `/api/opportunities`               | 获取商机列表 |
+| GET    | `/api/opportunities/{id}`          | 获取商机详情 |
+| POST   | `/api/opportunities`               | 创建商机   |
+| PUT    | `/api/opportunities/{id}`          | 更新商机   |
+| DELETE | `/api/opportunities/{id}`          | 删除商机   |
+| POST   | `/api/opportunities/{id}/save-all` | 全量保存节点 |
 
 ### 节点接口
-| 方法 | 路径 | 描述 |
-|------|------|------|
+
+| 方法   | 路径                                     | 描述   |
+| ---- | -------------------------------------- | ---- |
 | POST | `/api/opportunities/{id}/nodes/create` | 创建节点 |
-| PUT | `/api/nodes/{id}` | 更新节点 |
-| POST | `/api/nodes/{id}/delete` | 删除节点 |
+| PUT  | `/api/nodes/{id}`                      | 更新节点 |
+| POST | `/api/nodes/{id}/delete`               | 删除节点 |
 
 ## 🎮 使用说明
 
 ### 创建节点
+
 1. 点击「新建节点」按钮
 2. 节点会自动添加到画布上
 
 ### 连接节点
+
 1. 从节点的内圈（白色小圆）拖拽到目标节点的外圈（深灰色大圆）
 2. 连线会自动创建并保存
 
 ### 删除节点/连线
+
 1. 点击选中节点或连线
 2. 点击「删除选中」按钮或按 Delete/Backspace 键
 
 ### 查看日志
+
 1. 点击「📋 日志」按钮打开日志面板
 2. 查看所有操作记录
 
 ## 📝 开发指南
 
-详细的开发指南请参考 [docs/development_guide.md](docs/development_guide.md)，包含：
+详细的开发指南请参考 [docs/development\_guide.md](docs/development_guide.md)，包含：
 
 - 常见问题及解决方案
 - 最佳实践
@@ -172,9 +187,10 @@ MIT License - 详见 [LICENSE](LICENSE)
 ## 📧 联系方式
 
 如有问题或建议，请通过以下方式联系：
-- 提交 GitHub Issue
-- 发送邮件至 [support@example.com]
 
----
+- 提交 GitHub Issue
+- 发送邮件至 \[<support@example.com>]
+
+***
 
 **商机追踪系统** - 高效管理您的商机数据
